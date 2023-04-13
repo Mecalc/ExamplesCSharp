@@ -1,3 +1,6 @@
 [submodule "QProtocolCSharp.git"]
 	path = QProtocolCSharp
 	url = https://github.com/Mecalc/QProtocolCSharp.git
+[submodule "QClientCSharp.git"]
+	path = QClientCSharp
+	url = https://github.com/Mecalc/QClientCSharp.git

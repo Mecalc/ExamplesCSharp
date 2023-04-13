@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <RootNamespace>QClient_Basics_Item_List</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\QClientCSharp\QClientCSharp.csproj" />
+    <ProjectReference Include="..\QClientCSharp\QProtocolCSharp\QProtocol.csproj" />
+  </ItemGroup>
+
+</Project>
