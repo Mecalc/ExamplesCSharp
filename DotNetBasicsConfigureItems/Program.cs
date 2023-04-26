@@ -13,7 +13,7 @@ Console.WriteLine("Only standard DotNet classes will be used to accomplish this 
 Console.WriteLine(string.Empty);
 
 // You can either specify the system IP here or in the console when the application runs.
-string ipAddress = "192.168.100.177";
+string ipAddress = "";
 if (string.IsNullOrEmpty(ipAddress))
 {
     Console.WriteLine("Please specify an IP Address:");

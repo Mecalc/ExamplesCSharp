@@ -5,7 +5,7 @@
 using System.Net;
 using System.Net.NetworkInformation;
 
-namespace DotNet_Basics
+namespace DotNetBasics
 {
     public static class GetIpAndValidate
     {
