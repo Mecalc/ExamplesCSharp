@@ -36,8 +36,8 @@ const int moduleTypeId = 2;
 const int channelTypeId = 4;
 
 // A specific Item can be identified by using the unique ItemNameIdentifier.
-const int ics42ModuleNameId = 182;
-const int ics42ChannelNameId = 46;
+const int ics42ModuleNameId = 213;
+const int ics42ChannelNameId = 13;
 
 var icsModules = jsonNode.AsArray()
                          .Where(item => item["ItemTypeIdentifier"].GetValue<int>() == moduleTypeId)
