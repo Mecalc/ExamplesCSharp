@@ -12,7 +12,7 @@ using QProtocol.JsonProperties;
 
 Console.WriteLine("QClient Basics - Configure Items");
 Console.WriteLine("This example will demonstrate some of the helpful features of the QProtocol and QClient libraries.");
-Console.WriteLine("A connection to QServer will be established and the Item List read and printed to the Console window in an effortless way.");
+Console.WriteLine("A connection to QServer will be established and the Items configured in an effortless way.");
 Console.WriteLine(string.Empty);
 
 // You can either specify the system IP here or in the console when the application runs.
