@@ -10,6 +10,7 @@ using QProtocol.DataStreaming.DataPackets;
 using QProtocol.DataStreaming.Headers;
 using QProtocol.GenericDefines;
 using QProtocol.JsonProperties;
+using System.Diagnostics;
 using System.Net.Sockets;
 
 Console.WriteLine("QClient Advanced - Stream Data");
@@ -89,12 +90,23 @@ httpConnection.Put(EndPoints.SystemSettingsApply);
 // QServer can stream to different ports hence query which one is available:
 var streamingSetup = httpConnection.Get<DataStreamSetup>(EndPoints.DataStreamSetup);
 
-Console.WriteLine($"Ready to stream data from http://{ipAddress}:{streamingSetup.TCPPort}. Press any key to start and C to stop.");
-Console.ReadKey();
+Console.WriteLine($"Ready to stream data from http://{ipAddress}:{streamingSetup.TCPPort}. Press C to stop.");
 
 using var tcpClient = new TcpClient(ipAddress, streamingSetup.TCPPort);
 using var networkStreamer = tcpClient.GetStream();
 var buffer = new byte[1024];
+
+// A few variables for pushing updates to the console.
+var timer = Stopwatch.StartNew();
+var lastUpdate = 0l;
+var packetsReceived = 0;
+
+var analogDataPackets = new List<AnalogDataPacket>();
+var canFdDataPackets = new List<CanFdDataPacket>();
+var tachoDataPackets = new List<TachoDataPacket>();
+var analogDataPacketCounter = 0l;
+var canFdDataPacketCounter = 0l;
+var tachoDataPacketCounter = 0l;
 
 // At this point QServer will start to package data and send it over your port.
 // A Loop for a longer runtime
@@ -127,6 +139,7 @@ while (true)
     using (var packetHeaderReader = new BinaryReader(memoryStream))
     {
         packetHeader = new PacketHeader(packetHeaderReader);
+        packetsReceived++;
 
         // Increase the buffer size if the payload is too big.
         if (buffer.Length < packetHeader.PayloadSize)
@@ -152,10 +165,6 @@ while (true)
     {
         continue;
     }
-
-    var analogDataPackets = new List<AnalogDataPacket>();
-    var canFdDataPackets = new List<CanFdDataPacket>();
-    var tachoDataPackets = new List<TachoDataPacket>();
 
     networkStreamer.ReadExactly(buffer, 0, (int)bytesLeft);
     using (var memoryStream = new MemoryStream(buffer))
@@ -219,12 +228,24 @@ while (true)
         }
     }
 
+    analogDataPacketCounter += analogDataPackets.Count;
+    canFdDataPacketCounter += canFdDataPackets.Count;
+    tachoDataPacketCounter += tachoDataPackets.Count;
+    analogDataPackets.Clear();
+    canFdDataPackets.Clear();
+    tachoDataPackets.Clear();
+
     // Now that the entire payload has been read, print the data to the screen and start all over.
-    Console.SetCursorPosition(0, Console.CursorTop - 4);
-    Console.WriteLine($"Timestamp: {packetHeader.TransmitTimestamp:f3} s:");
-    Console.WriteLine($"Analog Channels: {string.Join($", ", analogDataPackets.Select(sample => $"CH {sample.GenericChannelHeader.ChannelId}: {sample.SampleList.Max():f3} V"))}");
-    Console.WriteLine($"CAN FD Channels: {string.Join($", ", canFdDataPackets.Select(sample => $"CH {sample.GenericChannelHeader.ChannelId}: {sample.MessageList.Count()} messages"))}");
-    Console.WriteLine($"Tacho Channels: {string.Join($", ", tachoDataPackets.Select(sample => $"CH {sample.GenericChannelHeader.ChannelId}: {sample.TimestampList.Average():f3} s"))}");
+    if (timer.ElapsedMilliseconds > lastUpdate + 250)
+    {
+        lastUpdate = timer.ElapsedMilliseconds;
+
+        Console.SetCursorPosition(0, Console.CursorTop - 4);
+        Console.WriteLine($"Runtime: {timer.Elapsed:hh':'mm':'ss} - Packets received: {packetsReceived}");
+        Console.WriteLine($"Analog Channel Payloads: {analogDataPacketCounter}");
+        Console.WriteLine($"CAN FD Channel Payloads: {canFdDataPacketCounter}");
+        Console.WriteLine($"Tacho Channel Payloads: {tachoDataPacketCounter}");
+    }
 }
 
 // Once you are done reading the data from the port remember to close it.
