@@ -231,21 +231,30 @@ while (true)
     analogDataPacketCounter += analogDataPackets.Count;
     canFdDataPacketCounter += canFdDataPackets.Count;
     tachoDataPacketCounter += tachoDataPackets.Count;
-    analogDataPackets.Clear();
-    canFdDataPackets.Clear();
-    tachoDataPackets.Clear();
 
     // Now that the entire payload has been read, print the data to the screen and start all over.
     if (timer.ElapsedMilliseconds > lastUpdate + 250)
     {
         lastUpdate = timer.ElapsedMilliseconds;
+        var timeStampDateTime = DateTime.MinValue;
+
+        if (analogDataPackets.Count > 0)
+        {
+            var timeStampEpoch = analogDataPackets.First().GenericChannelHeader.Timestamp;
+            timeStampDateTime = DateTimeOffset.FromUnixTimeMilliseconds((long)(timeStampEpoch / 1000000))
+                                              .DateTime;
+        }
 
         Console.SetCursorPosition(0, Console.CursorTop - 4);
-        Console.WriteLine($"Runtime: {timer.Elapsed:hh':'mm':'ss} - Packets received: {packetsReceived}");
+        Console.WriteLine($"Runtime: {timer.Elapsed:hh':'mm':'ss} - Packets received: {packetsReceived} - Timestamp: {timeStampDateTime}");
         Console.WriteLine($"Analog Channel Payloads: {analogDataPacketCounter}");
         Console.WriteLine($"CAN FD Channel Payloads: {canFdDataPacketCounter}");
         Console.WriteLine($"Tacho Channel Payloads: {tachoDataPacketCounter}");
     }
+
+    analogDataPackets.Clear();
+    canFdDataPackets.Clear();
+    tachoDataPackets.Clear();
 }
 
 // Once you are done reading the data from the port remember to close it.
