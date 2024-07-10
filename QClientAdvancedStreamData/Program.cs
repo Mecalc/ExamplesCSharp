@@ -10,7 +10,6 @@ using QProtocol.DataStreaming.DataPackets;
 using QProtocol.DataStreaming.Headers;
 using QProtocol.GenericDefines;
 using QProtocol.JsonProperties;
-using System.Diagnostics;
 using System.Net.Sockets;
 
 Console.WriteLine("QClient Advanced - Stream Data");
@@ -90,23 +89,12 @@ httpConnection.Put(EndPoints.SystemSettingsApply);
 // QServer can stream to different ports hence query which one is available:
 var streamingSetup = httpConnection.Get<DataStreamSetup>(EndPoints.DataStreamSetup);
 
-Console.WriteLine($"Ready to stream data from http://{ipAddress}:{streamingSetup.TCPPort}. Press C to stop.");
+Console.WriteLine($"Ready to stream data from http://{ipAddress}:{streamingSetup.TCPPort}. Press any key to start and C to stop.");
+Console.ReadKey();
 
 using var tcpClient = new TcpClient(ipAddress, streamingSetup.TCPPort);
 using var networkStreamer = tcpClient.GetStream();
-var buffer = new byte[1024];
-
-// A few variables for pushing updates to the console.
-var timer = Stopwatch.StartNew();
-var lastUpdate = 0l;
-var packetsReceived = 0;
-
-var analogDataPackets = new List<AnalogDataPacket>();
-var canFdDataPackets = new List<CanFdDataPacket>();
-var tachoDataPackets = new List<TachoDataPacket>();
-var analogDataPacketCounter = 0l;
-var canFdDataPacketCounter = 0l;
-var tachoDataPacketCounter = 0l;
+using var binaryReader = new BinaryReader(networkStreamer);
 
 // At this point QServer will start to package data and send it over your port.
 // A Loop for a longer runtime
@@ -122,38 +110,16 @@ while (true)
         break;
     }
 
-    if (networkStreamer.DataAvailable == false)
-    {
-        Thread.Sleep(1);
-        continue;
-    }
-
     // The first step is to read the packet header, it consists of 32 bytes.
-    networkStreamer.ReadExactly(buffer, 0, (int)PacketHeader.BinarySize);
-
-
     // QProtocol has classes defined for all the Data Headers, packets and types.
-    // You'll need to create a BinaryStreamer from your data buffer and feed it into the defined classes.
-    PacketHeader packetHeader;
-    using (var memoryStream = new MemoryStream(buffer))
-    using (var packetHeaderReader = new BinaryReader(memoryStream))
+    var packetHeader = new PacketHeader(binaryReader);
+
+    // Multiple payload types exists, hence you'll need to take care that you can support them all or discard the data when not.
+    // With this example only Payload type 0 will be shown, hence discard the data of others.
+    if (packetHeader.PayloadType != 0)
     {
-        packetHeader = new PacketHeader(packetHeaderReader);
-        packetsReceived++;
-
-        // Increase the buffer size if the payload is too big.
-        if (buffer.Length < packetHeader.PayloadSize)
-        {
-            buffer = new byte[packetHeader.PayloadSize];
-        }
-
-        // Multiple payload types exists, hence you'll need to take care that you can support them all or discard the data when not.
-        // With this example only Payload type 0 will be shown, hence discard the data of others.
-        if (packetHeader.PayloadType != 0)
-        {
-            networkStreamer.ReadExactly(buffer, 0, (int)packetHeader.PayloadSize);
-            continue;
-        }
+        binaryReader.ReadBytes((int)packetHeader.PayloadSize);
+        continue;
     }
 
     // Following the Packet Header is the Payload.
@@ -166,100 +132,78 @@ while (true)
         continue;
     }
 
-    networkStreamer.ReadExactly(buffer, 0, (int)bytesLeft);
-    using (var memoryStream = new MemoryStream(buffer))
-    using (var payloadReader = new BinaryReader(memoryStream))
+    var analogDataPackets = new List<AnalogDataPacket>();
+    var canFdDataPackets = new List<CanFdDataPacket>();
+    var tachoDataPackets = new List<TachoDataPacket>();
+    while (bytesLeft > 0)
     {
-        while (bytesLeft > 0)
+        if (bytesLeft < GenericChannelHeader.BinarySize)
         {
-            if (bytesLeft < GenericChannelHeader.BinarySize)
-            {
-                throw new InvalidOperationException($"Invalid payload size. This will only happen when an invalid amount of data was copied from the streamer.");
-            }
+            throw new InvalidOperationException($"Invalid payload size. This will only happen when an invalid amount of data was copied from the streamer.");
+        }
 
-            // First read the Generic Header.
-            var genericChannelHeader = new GenericChannelHeader(payloadReader);
-            bytesLeft -= genericChannelHeader.GetBinarySize();
+        // First read the Generic Header.
+        var genericChannelHeader = new GenericChannelHeader(binaryReader);
+        bytesLeft -= genericChannelHeader.GetBinarySize();
 
-            // Then based on the channel type, a Channel Specific Header might follow.
-            switch (genericChannelHeader.ChannelType)
-            {
-                // For all Analog Channels.
-                case ChannelTypes.Analog:
-                    // Analog Channels will always have a Specific Header.
-                    // It contains information like Data Integrity, minimum and maximum values.
-                    var analogChannelHeader = new AnalogChannelHeader(genericChannelHeader, payloadReader);
-                    bytesLeft -= analogChannelHeader.GetBinarySize();
+        // Then based on the channel type, a Channel Specific Header might follow.
+        switch (genericChannelHeader.ChannelType)
+        {
+            // For all Analog Channels.
+            case ChannelTypes.Analog:
+                // Analog Channels will always have a Specific Header.
+                // It contains information like Data Integrity, minimum and maximum values.
+                var analogChannelHeader = new AnalogChannelHeader(genericChannelHeader, binaryReader);
+                bytesLeft -= analogChannelHeader.GetBinarySize();
 
-                    // And last, read the Data Samples.
-                    // QProtocol provides classes which combines the Headers and Data into one.
-                    var analogDataPacket = new AnalogDataPacket(genericChannelHeader, analogChannelHeader, payloadReader);
-                    bytesLeft -= analogDataPacket.GetBinarySize();
+                // And last, read the Data Samples.
+                // QProtocol provides classes which combines the Headers and Data into one.
+                var analogDataPacket = new AnalogDataPacket(genericChannelHeader, analogChannelHeader, binaryReader);
+                bytesLeft -= analogDataPacket.GetBinarySize();
 
-                    // Store the data in a buffer or save it locally. Just be careful not to stall the thread too much at this point.
-                    analogDataPackets.Add(analogDataPacket);
-                    break;
+                // Store the data in a buffer or save it locally. Just be careful not to stall the thread too much at this point.
+                analogDataPackets.Add(analogDataPacket);
+                break;
 
-                // As with Analog Data, CAN FD has a Specific Header followed by the Data.
-                case ChannelTypes.CanFd:
-                    var canFdChannelHeader = new CanFdChannelHeader(payloadReader);
-                    bytesLeft -= canFdChannelHeader.GetBinarySize();
+            // As with Analog Data, CAN FD has a Specific Header followed by the Data.
+            case ChannelTypes.CanFd:
+                var canFdChannelHeader = new CanFdChannelHeader(binaryReader);
+                bytesLeft -= canFdChannelHeader.GetBinarySize();
 
-                    var canFdDataPacket = new CanFdDataPacket(genericChannelHeader, canFdChannelHeader, payloadReader);
-                    bytesLeft -= canFdDataPacket.GetBinarySize();
+                var canFdDataPacket = new CanFdDataPacket(genericChannelHeader, canFdChannelHeader, binaryReader);
+                bytesLeft -= canFdDataPacket.GetBinarySize();
 
-                    canFdDataPackets.Add(canFdDataPacket);
-                    break;
+                canFdDataPackets.Add(canFdDataPacket);
+                break;
 
-                // Tacho channels does not have a Specific Channel Header, hence we can copy the Packet directly.
-                case ChannelTypes.Tacho:
-                    var tachoDataPacket = new TachoDataPacket(genericChannelHeader, payloadReader);
-                    bytesLeft -= tachoDataPacket.GetBinarySize();
+            // Tacho channels does not have a Specific Channel Header, hence we can copy the Packet directly.
+            case ChannelTypes.Tacho:
+                var tachoDataPacket = new TachoDataPacket(genericChannelHeader, binaryReader);
+                bytesLeft -= tachoDataPacket.GetBinarySize();
 
-                    tachoDataPackets.Add(tachoDataPacket);
-                    break;
+                tachoDataPackets.Add(tachoDataPacket);
+                break;
 
-                // Triggered channels will not be shown in this example.
-                case ChannelTypes.TriggeredData:
-                case ChannelTypes.TriggeredScope:
-                default:
-                    throw new InvalidOperationException($"The channel type received in the stream is not supported by this example.");
-            }
+            // Triggered channels will not be shown in this example.
+            case ChannelTypes.TriggeredData:
+            case ChannelTypes.TriggeredScope:
+            default:
+                throw new InvalidOperationException($"The channel type received in the stream is not supported by this example.");
         }
     }
-
-    analogDataPacketCounter += analogDataPackets.Count;
-    canFdDataPacketCounter += canFdDataPackets.Count;
-    tachoDataPacketCounter += tachoDataPackets.Count;
 
     // Now that the entire payload has been read, print the data to the screen and start all over.
-    if (timer.ElapsedMilliseconds > lastUpdate + 250)
-    {
-        lastUpdate = timer.ElapsedMilliseconds;
-        var timeStampDateTime = DateTime.MinValue;
-
-        if (analogDataPackets.Count > 0)
-        {
-            var timeStampEpoch = analogDataPackets.First().GenericChannelHeader.Timestamp;
-            timeStampDateTime = DateTimeOffset.FromUnixTimeMilliseconds((long)(timeStampEpoch / 1000000))
-                                              .DateTime;
-        }
-
-        Console.SetCursorPosition(0, Console.CursorTop - 4);
-        Console.WriteLine($"Runtime: {timer.Elapsed:hh':'mm':'ss} - Packets received: {packetsReceived} - Timestamp: {timeStampDateTime}");
-        Console.WriteLine($"Analog Channel Payloads: {analogDataPacketCounter}");
-        Console.WriteLine($"CAN FD Channel Payloads: {canFdDataPacketCounter}");
-        Console.WriteLine($"Tacho Channel Payloads: {tachoDataPacketCounter}");
-    }
-
-    analogDataPackets.Clear();
-    canFdDataPackets.Clear();
-    tachoDataPackets.Clear();
+    Console.SetCursorPosition(0, Console.CursorTop - 4);
+    Console.WriteLine($"Timestamp: {packetHeader.TransmitTimestamp:f3} s:");
+    Console.WriteLine($"Analog Channels: {string.Join($", ", analogDataPackets.Select(sample => $"CH {sample.GenericChannelHeader.ChannelId}: {sample.SampleList.Max():f3} V"))}");
+    Console.WriteLine($"CAN FD Channels: {string.Join($", ", canFdDataPackets.Select(sample => $"CH {sample.GenericChannelHeader.ChannelId}: {sample.MessageList.Count()} messages"))}");
+    Console.WriteLine($"Tacho Channels: {string.Join($", ", tachoDataPackets.Select(sample => $"CH {sample.GenericChannelHeader.ChannelId}: {sample.TimestampList.Average():f3} s"))}");
 }
 
 // Once you are done reading the data from the port remember to close it.
 // This will instruct QServer to stop buffering data an flush the remaining data from the buffers.
 // Hence be careful not to expect a continuous series of samples when opening and closing ports!
+binaryReader.Close();
 networkStreamer.Close();
 tcpClient.Close();
 
