@@ -10,7 +10,6 @@ using QProtocol.DataStreaming.DataPackets;
 using QProtocol.DataStreaming.Headers;
 using QProtocol.GenericDefines;
 using QProtocol.JsonProperties;
-using System.Diagnostics;
 using System.Net.Sockets;
 
 Console.WriteLine("QClient Advanced - Stream Data");
@@ -151,6 +150,9 @@ while (true)
         continue;
     }
 
+    var analogDataPackets = new List<AnalogDataPacket>();
+    var canFdDataPackets = new List<CanFdDataPacket>();
+    var tachoDataPackets = new List<TachoDataPacket>();
     while (bytesLeft > 0)
     {
         if (bytesLeft < GenericChannelHeader.BinarySize)
