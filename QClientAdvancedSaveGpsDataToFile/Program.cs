@@ -11,6 +11,10 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Text;
 
+
+const string outputFileName = "#output_log.txt"; // Used to log the console output text.
+const string gpggaFileName = "#gpgga_log.txt";
+
 Console.WriteLine("QClient Advanced - Save GPS Data to File");
 Console.WriteLine("This example will demonstrate how to GPS Channel Data to a file.");
 Console.WriteLine("Module and Channel setup should be made via QAcquire. Ensure a channel is enabled.");
@@ -19,6 +23,9 @@ Console.WriteLine(string.Empty);
 var ipAddress = args[0];
 var httpConnection = new RestfulInterface($"http://{ipAddress}:8080");
 var streamingSetup = httpConnection.Get<DataStreamSetup>(EndPoints.DataStreamSetup);
+
+// At this point a connection could be made, hence timestamp the files.
+File.AppendAllText(gpggaFileName, $"{DateTime.Now:G} - New test started{Environment.NewLine}");
 
 using var tcpClient = new TcpClient(ipAddress, streamingSetup.TCPPort);
 using var networkStreamer = tcpClient.GetStream();
@@ -90,7 +97,7 @@ while (true)
 
             // Tacho channels does not have a Specific Channel Header, hence we can copy the Packet directly.
             case ChannelTypes.Tacho:
-                var tachoDataPacket = new TachoDataPacket(genericChannelHeader, binaryReader);
+                var tachoDataPacket = new TachoDataPacket(genericChannelHeader, binaryReader); 
                 bytesLeft -= tachoDataPacket.GetBinarySize();
                 break;
 
@@ -103,12 +110,19 @@ while (true)
 
                 var message = new StringBuilder();
                 message.AppendLine($"BEGIN - Timestamp: {gpsChannelHeader.Timestamp}, Accuracy: {gpsChannelHeader.AccuracyInNanoSeconds} ns, Is Leap Seconds Valid: {gpsChannelHeader.IsLeapSecondsValid == 1}, Leap Seconds: {gpsChannelHeader.LeapSeconds}");
-                message.Append(Encoding.ASCII.GetString(gpsChannelPacket.MessageList));
+                message.Append(gpsChannelPacket.Message);
                 message.AppendLine("END");
 
                 var text = message.ToString();
                 Console.WriteLine(text);
-                File.AppendAllText("output.txt", text);
+                File.AppendAllText(outputFileName, text);
+
+                var startIndex = text.IndexOf("$GPGGA");
+                if (startIndex > 0)
+                {
+                    var endIndex = 2 + text.IndexOf("\r\n", startIndex); // Always \r\n for UBlock chip!
+                    File.AppendAllText(gpggaFileName, $"{text.Substring(startIndex, endIndex - startIndex)}");
+                }
 
                 stopwatch.Restart();
                 break;
