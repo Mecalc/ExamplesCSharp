@@ -36,17 +36,20 @@ const int moduleTypeId = 2;
 const int channelTypeId = 4;
 
 // A specific Item can be identified by using the unique ItemNameIdentifier.
-const int ics42ModuleNameId = 213;
-const int ics42ChannelNameId = 13;
+// Multiple ICS42 revisions exist, hence you'll have to search for all existing types.
+const int ics421ModuleNameId = 213;
+const int ics421ChannelNameId = 13;
+const int ics425ModuleNameId = 217;
+const int ics425ChannelNameId = 15;
 
 var icsModules = jsonNode.AsArray()
                          .Where(item => item["ItemTypeIdentifier"].GetValue<int>() == moduleTypeId)
-                         .Where(item => item["ItemNameIdentifier"].GetValue<int>() == ics42ModuleNameId)
+                         .Where(item => item["ItemNameIdentifier"].GetValue<int>() == ics421ModuleNameId || item["ItemNameIdentifier"].GetValue<int>() == ics425ModuleNameId)
                          .ToList();
 
 var icsChannels = jsonNode.AsArray()
                           .Where(item => item["ItemTypeIdentifier"].GetValue<int>() == channelTypeId)
-                          .Where(item => item["ItemNameIdentifier"].GetValue<int>() == ics42ChannelNameId)
+                          .Where(item => item["ItemNameIdentifier"].GetValue<int>() == ics421ChannelNameId || item["ItemNameIdentifier"].GetValue<int>() == ics425ChannelNameId)
                           .ToList();
 
 // Module Items control the sampling rate of their hosted Channels. Lets change it to the highest possible value.

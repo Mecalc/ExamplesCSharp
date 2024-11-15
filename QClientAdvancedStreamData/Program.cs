@@ -10,10 +10,11 @@ using QProtocol.DataStreaming.DataPackets;
 using QProtocol.DataStreaming.Headers;
 using QProtocol.GenericDefines;
 using QProtocol.JsonProperties;
+using System.Diagnostics;
 using System.Net.Sockets;
 
 Console.WriteLine("QClient Advanced - Stream Data");
-Console.WriteLine("This example will demonstrate how to enable and stream data from Analog, Tacho and CAN FD Channels.");
+Console.WriteLine("This example will demonstrate how to enable and stream data from Analog, Tacho, CAN FD and GPS Channels.");
 Console.WriteLine("Master Sampling Rate and Module setup should be made via QAcquire. Ensure a few channels are enabled.");
 Console.WriteLine(string.Empty);
 
@@ -54,6 +55,10 @@ foreach (var item in itemList)
 
     // Then enable the streaming state by fetching the settings.
     var itemSettings = item.GetItemSettings();
+    if (itemSettings.Data == null)
+    {
+        continue;
+    }
 
     // Convert the results from the Generic JSON class to the Data specific class.
     var dataState = Setting.ConvertTo<Data>(itemSettings.Data);
@@ -103,6 +108,18 @@ Console.WriteLine("Timestamp:");
 Console.WriteLine("Analog Channels:");
 Console.WriteLine("CAN FD Channels:");
 Console.WriteLine("Tacho Channels:");
+Console.WriteLine("GPS Channels:");
+
+var updateTimer = Stopwatch.StartNew();
+var analogPacketCounter = 0;
+var canPacketCounter = 0;
+var tachoPacketCounter = 0;
+var gpsPacketCounter = 0;
+
+var analogDataPackets = new List<AnalogDataPacket>();
+var canFdDataPackets = new List<CanFdDataPacket>();
+var tachoDataPackets = new List<TachoDataPacket>();
+var gpsDataPackets = new List<GpsDataPacket>();
 while (true)
 {
     if (Console.KeyAvailable && Console.ReadKey(true).Key == ConsoleKey.C)
@@ -132,9 +149,6 @@ while (true)
         continue;
     }
 
-    var analogDataPackets = new List<AnalogDataPacket>();
-    var canFdDataPackets = new List<CanFdDataPacket>();
-    var tachoDataPackets = new List<TachoDataPacket>();
     while (bytesLeft > 0)
     {
         if (bytesLeft < GenericChannelHeader.BinarySize)
@@ -184,6 +198,16 @@ while (true)
                 tachoDataPackets.Add(tachoDataPacket);
                 break;
 
+            // Disclaimer: GPS channels are still in Beta, use it at own risk.
+            case ChannelTypes.Gps:
+                var gpsChannelHeader = new GpsChannelHeader(binaryReader);
+                bytesLeft -= gpsChannelHeader.GetBinarySize();
+                var gpsChannelPacket = new GpsDataPacket(genericChannelHeader, gpsChannelHeader, binaryReader);
+                bytesLeft -= gpsChannelPacket.GetBinarySize();
+
+                gpsDataPackets.Add(gpsChannelPacket);
+                break;
+
             // Triggered channels will not be shown in this example.
             case ChannelTypes.TriggeredData:
             case ChannelTypes.TriggeredScope:
@@ -192,12 +216,27 @@ while (true)
         }
     }
 
-    // Now that the entire payload has been read, print the data to the screen and start all over.
-    Console.SetCursorPosition(0, Console.CursorTop - 4);
-    Console.WriteLine($"Timestamp: {packetHeader.TransmitTimestamp:f3} s:");
-    Console.WriteLine($"Analog Channels: {string.Join($", ", analogDataPackets.Select(sample => $"CH {sample.GenericChannelHeader.ChannelId}: {sample.SampleList.Max():f3} V"))}");
-    Console.WriteLine($"CAN FD Channels: {string.Join($", ", canFdDataPackets.Select(sample => $"CH {sample.GenericChannelHeader.ChannelId}: {sample.MessageList.Count()} messages"))}");
-    Console.WriteLine($"Tacho Channels: {string.Join($", ", tachoDataPackets.Select(sample => $"CH {sample.GenericChannelHeader.ChannelId}: {sample.TimestampList.Average():f3} s"))}");
+    // Here I'll show the counters that you can visualize how the data is flowing.
+    if (updateTimer.ElapsedMilliseconds > 1000)
+    {
+        analogPacketCounter += analogDataPackets.Count;
+        canPacketCounter += canFdDataPackets.Count;
+        tachoPacketCounter += tachoDataPackets.Count;
+        gpsPacketCounter += gpsDataPackets.Count;
+
+        Console.SetCursorPosition(0, Console.CursorTop - 5);
+        Console.WriteLine($"Timestamp: {packetHeader.TransmitTimestamp:f3} s:");
+        Console.WriteLine($"Analog Channels: {analogPacketCounter} packets received");
+        Console.WriteLine($"CAN FD Channels: {canPacketCounter} packets received");
+        Console.WriteLine($"Tacho Channels: {tachoPacketCounter} packets received");
+        Console.WriteLine($"GPS Channels: {gpsPacketCounter} packets received");
+
+        analogDataPackets.Clear();
+        canFdDataPackets.Clear();
+        tachoDataPackets.Clear();
+        gpsDataPackets.Clear();
+        updateTimer.Restart();
+    }
 }
 
 // Once you are done reading the data from the port remember to close it.
