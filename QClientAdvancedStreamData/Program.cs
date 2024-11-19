@@ -16,6 +16,7 @@ using System.Net.Sockets;
 Console.WriteLine("QClient Advanced - Stream Data");
 Console.WriteLine("This example will demonstrate how to enable and stream data from Analog, Tacho, CAN FD and GPS Channels.");
 Console.WriteLine("Master Sampling Rate and Module setup should be made via QAcquire. Ensure a few channels are enabled.");
+Console.WriteLine("Requirements: DecaQ or MicroQ with at least one Module of any type installed.");
 Console.WriteLine(string.Empty);
 
 // You can either specify the system IP here or in the console when the application runs.
@@ -208,9 +209,6 @@ while (true)
                 gpsDataPackets.Add(gpsChannelPacket);
                 break;
 
-            // Triggered channels will not be shown in this example.
-            case ChannelTypes.TriggeredData:
-            case ChannelTypes.TriggeredScope:
             default:
                 throw new InvalidOperationException($"The channel type received in the stream is not supported by this example.");
         }

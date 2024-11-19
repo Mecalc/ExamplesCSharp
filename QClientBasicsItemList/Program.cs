@@ -11,6 +11,7 @@ using System.Text.Json;
 Console.WriteLine("QClient Basics - Item List");
 Console.WriteLine("This example will demonstrate some of the helpful features of the QProtocol and QClient libraries.");
 Console.WriteLine("A connection to QServer will be established and the Item List read and printed to the Console window in an effortless way.");
+Console.WriteLine("Requirements: DecaQ or MicroQ with at least one Module of any type installed.");
 Console.WriteLine(string.Empty);
 
 // You can either specify the system IP here or in the console when the application runs.

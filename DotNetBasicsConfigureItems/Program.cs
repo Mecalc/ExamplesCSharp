@@ -10,6 +10,7 @@ Console.WriteLine("DotNet Basics - Configure Items");
 Console.WriteLine("In this example a connection to QServer will be established and the Item List read.");
 Console.WriteLine("All the ICS42 Modules and Channels will be discovered and configured.");
 Console.WriteLine("Only standard DotNet classes will be used to accomplish this task.");
+Console.WriteLine("Requirements: DecaQ or MicroQ with at least one ICS425 installed.");
 Console.WriteLine(string.Empty);
 
 // You can either specify the system IP here or in the console when the application runs.
@@ -36,20 +37,17 @@ const int moduleTypeId = 2;
 const int channelTypeId = 4;
 
 // A specific Item can be identified by using the unique ItemNameIdentifier.
-// Multiple ICS42 revisions exist, hence you'll have to search for all existing types.
-const int ics421ModuleNameId = 213;
-const int ics421ChannelNameId = 13;
 const int ics425ModuleNameId = 217;
 const int ics425ChannelNameId = 15;
 
 var icsModules = jsonNode.AsArray()
                          .Where(item => item["ItemTypeIdentifier"].GetValue<int>() == moduleTypeId)
-                         .Where(item => item["ItemNameIdentifier"].GetValue<int>() == ics421ModuleNameId || item["ItemNameIdentifier"].GetValue<int>() == ics425ModuleNameId)
+                         .Where(item => item["ItemNameIdentifier"].GetValue<int>() == ics425ModuleNameId)
                          .ToList();
 
 var icsChannels = jsonNode.AsArray()
                           .Where(item => item["ItemTypeIdentifier"].GetValue<int>() == channelTypeId)
-                          .Where(item => item["ItemNameIdentifier"].GetValue<int>() == ics421ChannelNameId || item["ItemNameIdentifier"].GetValue<int>() == ics425ChannelNameId)
+                          .Where(item => item["ItemNameIdentifier"].GetValue<int>() == ics425ChannelNameId)
                           .ToList();
 
 // Module Items control the sampling rate of their hosted Channels. Lets change it to the highest possible value.
