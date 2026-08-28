@@ -40,7 +40,8 @@ foreach (var item in itemList)
 {
     // Skip Non Channel types and Unsupported types too.
     if (item.ItemTypeIdentifier != (int)Types.ItemType.Channel
-        || item.ItemNameIdentifier == (int)Types.ChannelType.Unsupported)
+        || item.ItemNameIdentifier == (int)Types.ChannelType.Unsupported
+        || item.ItemNameIdentifier == (int)Types.ChannelType.ALO42S4)
     {
         continue;
     }

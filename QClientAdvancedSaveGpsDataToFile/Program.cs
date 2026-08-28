@@ -10,6 +10,7 @@ using QProtocol.GenericDefines;
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Text;
+using static System.FormattableString;
 
 
 const string outputFileName = "#output_log.txt"; // Used to log the console output text.
@@ -109,7 +110,8 @@ while (true)
                 bytesLeft -= gpsChannelPacket.GetBinarySize();
 
                 var message = new StringBuilder();
-                message.AppendLine($"BEGIN - Timestamp: {gpsChannelHeader.Timestamp}, Accuracy: {gpsChannelHeader.AccuracyInNanoSeconds} ns, Is Leap Seconds Valid: {gpsChannelHeader.IsLeapSecondsValid == 1}, Leap Seconds: {gpsChannelHeader.LeapSeconds}");
+                message.AppendLine($"BEGIN");
+                message.AppendLine($"Api Timestamp: {genericChannelHeader.Timestamp}, UBlox Timestamp: {gpsChannelHeader.Timestamp}, Accuracy: {gpsChannelHeader.AccuracyInNanoSeconds} ns, Is Leap Seconds Valid: {gpsChannelHeader.IsLeapSecondsValid == 1}, Leap Seconds: {gpsChannelHeader.LeapSeconds}");
                 message.Append(gpsChannelPacket.Message);
                 message.AppendLine("END");
 
@@ -121,7 +123,7 @@ while (true)
                 if (startIndex > 0)
                 {
                     var endIndex = 2 + text.IndexOf("\r\n", startIndex); // Always \r\n for UBlock chip!
-                    File.AppendAllText(gpggaFileName, $"{text.Substring(startIndex, endIndex - startIndex)}");
+                    File.AppendAllText(gpggaFileName, Invariant($"{genericChannelHeader.Timestamp},{gpsChannelHeader.Timestamp:R},{text.Substring(startIndex + 7, endIndex - startIndex - 7)}"));
                 }
 
                 stopwatch.Restart();
