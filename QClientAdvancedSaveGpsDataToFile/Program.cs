@@ -15,6 +15,7 @@ using static System.FormattableString;
 
 const string outputFileName = "#output_log.txt"; // Used to log the console output text.
 const string gpggaFileName = "#gpgga_log.txt";
+const string driftFileName = "#drift_log.txt";
 
 Console.WriteLine("QClient Advanced - Save GPS Data to File");
 Console.WriteLine("This example will demonstrate how to GPS Channel Data to a file.");
@@ -27,6 +28,7 @@ var streamingSetup = httpConnection.Get<DataStreamSetup>(EndPoints.DataStreamSet
 
 // At this point a connection could be made, hence timestamp the files.
 File.AppendAllText(gpggaFileName, $"{DateTime.Now:G} - New test started{Environment.NewLine}");
+long intialOffset = long.MinValue;
 
 using var tcpClient = new TcpClient(ipAddress, streamingSetup.TCPPort);
 using var networkStreamer = tcpClient.GetStream();
@@ -66,6 +68,8 @@ while (true)
         continue;
     }
 
+    ulong firstAnalogTimestamp = 0;
+    var ggaMessage = string.Empty;
     while (bytesLeft > 0)
     {
         if (bytesLeft < GenericChannelHeader.BinarySize)
@@ -86,6 +90,11 @@ while (true)
                 bytesLeft -= analogChannelHeader.GetBinarySize();
                 var analogDataPacket = new AnalogDataPacket(genericChannelHeader, analogChannelHeader, binaryReader);
                 bytesLeft -= analogDataPacket.GetBinarySize();
+
+                if (firstAnalogTimestamp == 0)
+                {
+                    firstAnalogTimestamp = genericChannelHeader.Timestamp;
+                }
                 break;
 
             // As with Analog Data, CAN FD has a Specific Header followed by the Data.
@@ -116,14 +125,15 @@ while (true)
                 message.AppendLine("END");
 
                 var text = message.ToString();
-                Console.WriteLine(text);
                 File.AppendAllText(outputFileName, text);
 
                 var startIndex = text.IndexOf("$GPGGA");
                 if (startIndex > 0)
                 {
-                    var endIndex = 2 + text.IndexOf("\r\n", startIndex); // Always \r\n for UBlock chip!
-                    File.AppendAllText(gpggaFileName, Invariant($"{genericChannelHeader.Timestamp},{gpsChannelHeader.Timestamp:R},{text.Substring(startIndex + 7, endIndex - startIndex - 7)}"));
+                    var endIndex = text.IndexOf("\r\n", startIndex); // Always \r\n for UBlock chip!
+                    ggaMessage = text.Substring(startIndex + 7, endIndex - startIndex - 7);
+                    File.AppendAllText(gpggaFileName, Invariant($"{genericChannelHeader.Timestamp},{gpsChannelHeader.Timestamp:R},{ggaMessage},{Environment.NewLine}"));
+                    Console.WriteLine($"Api Timestamp: {genericChannelHeader.Timestamp}, UBlox Timestamp: {gpsChannelHeader.Timestamp}");
                 }
 
                 stopwatch.Restart();
@@ -134,6 +144,46 @@ while (true)
             case ChannelTypes.TriggeredScope:
             default:
                 throw new InvalidOperationException($"The channel type received in the stream is not supported by this example.");
+        }
+    }
+
+    if (!string.IsNullOrEmpty(ggaMessage)
+        && firstAnalogTimestamp != 0)
+    {
+        var partsOfGga = ggaMessage.Split(',');
+        try
+        {
+            var epochMs = (long)firstAnalogTimestamp / 1_000_000;  // ns -> ms
+            var remainderNs = (int)(firstAnalogTimestamp % 1_000_000);  // leftover sub-ms ns, if you need precision
+
+            DateTimeOffset epochUtc = DateTimeOffset.FromUnixTimeMilliseconds(epochMs);
+
+            // --- Parse GPGGA time string (HHMMSS.SS) ---
+            int hh = int.Parse(partsOfGga[0].Substring(0, 2));
+            int mm = int.Parse(partsOfGga[0].Substring(2, 2));
+            double ss = double.Parse(partsOfGga[0].Substring(4)); // seconds.fraction
+
+            var gpsUtc = new DateTimeOffset(
+                epochUtc.Year, epochUtc.Month, epochUtc.Day,
+                hh, mm, (int)ss,
+                TimeSpan.Zero
+            ).AddSeconds(ss - (int)ss); // add fractional seconds
+
+            // --- Compare ---
+            TimeSpan diff = epochUtc - gpsUtc;
+            if (intialOffset == long.MinValue)
+            {
+                intialOffset = (long)diff.TotalMilliseconds;
+            }
+
+            var drift = intialOffset - (diff.TotalMilliseconds);
+            Console.WriteLine($"System Time: {epochUtc:yyyy-MM-dd HH:mm:ss.fffffff} Z, GPS time: {gpsUtc:yyyy-MM-dd HH:mm:ss.fffffff} Z, Sat's: {partsOfGga[6]}, Drift: {drift:F0} milliseconds");
+            File.AppendAllText(driftFileName, $"{epochUtc:yyyy-MM-dd HH:mm:ss.fffffff},{gpsUtc:yyyy-MM-dd HH:mm:ss.fffffff},{drift:F0},{ggaMessage},{Environment.NewLine}");
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("unable to parse GGA message");
+            throw;
         }
     }
 

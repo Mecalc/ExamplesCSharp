@@ -2,7 +2,7 @@
   "profiles": {
     "QClientAdvancedSaveGpsDataToFile": {
       "commandName": "Project",
-      "commandLineArgs": "192.168.100.47"
+      "commandLineArgs": "192.168.178.101"
     }
   }
 }
