@@ -13,6 +13,7 @@ using QProtocol.InternalModules.WSB;
 Console.WriteLine("QClient Advanced - Configure Items");
 Console.WriteLine("This example will demonstrate how to use the Advanced namespace of QProtocol and QClient to ease your integration efforts.");
 Console.WriteLine("A connection to QServer will be established and the Items configured in an effortless way.");
+Console.WriteLine("Requirements: DecaQ or MicroQ with at least one ICS425 or WSB42X6 installed.");
 Console.WriteLine(string.Empty);
 
 // You can either specify the system IP here or in the console when the application runs.
@@ -47,33 +48,34 @@ controllerSettings.Settings.MasterSamplingRate = Controller.MasterSamplingRate._
 contoller.PutItemSettings(controllerSettings);
 
 // Now to enable all of the WSB and ICS Modules, and to change their sampling rates we can do the following.
+// You'll have to update this list for specific builds that are not listed here. 
 foreach (var item in itemList)
 {
     switch (item)
     {
-        case ICS421Module ics421Module:
-            var ics421OperationMode = ics421Module.GetItemOperationMode();
-            if (ics421OperationMode != ICS421Module.OperationMode.Enabled)
+        case ICS425Module ics425Module:
+            var ics425OperationMode = ics425Module.GetItemOperationMode();
+            if (ics425OperationMode != ICS425Module.OperationMode.Enabled)
             {
-                ics421Module.PutItemOperationMode(ICS421Module.OperationMode.Enabled);
+                ics425Module.PutItemOperationMode(ICS425Module.OperationMode.Enabled);
             }
 
-            var ics421Settings = ics421Module.GetItemSettings<ICS421Module.EnabledSettings>();
-            ics421Settings.Settings.SampleRate = ICS421Module.SampleRate.MsrDivideBy2;
-            ics421Settings.Settings.Grounding = ICS421Module.Grounding.Floating;
-            ics421Module.PutItemSettings(ics421Settings);
+            var ics425Settings = ics425Module.GetItemSettings<ICS425Module.EnabledSettings>();
+            ics425Settings.Settings.SampleRate = ICS425Module.SampleRate.MsrDivideBy2;
+            ics425Settings.Settings.Grounding = ICS425Module.Grounding.Floating;
+            ics425Module.PutItemSettings(ics425Settings);
             break;
 
-        case WSB42X2Module wsb42x2Module:
-            var wsb42x2OperaionMode = wsb42x2Module.GetItemOperationMode();
-            if (wsb42x2OperaionMode != WSB42X2Module.OperationMode.Enabled)
+        case WSB42X6Module wsb42x6Module:
+            var wsb42x6OperaionMode = wsb42x6Module.GetItemOperationMode();
+            if (wsb42x6OperaionMode != WSB42X6Module.OperationMode.Enabled)
             {
-                wsb42x2Module.PutItemOperationMode(wsb42x2OperaionMode);
+                wsb42x6Module.PutItemOperationMode(wsb42x6OperaionMode);
             }
 
-            var wsb42x2Settings = wsb42x2Module.GetItemSettings<WSB42X2Module.EnabledSettings>();
-            wsb42x2Settings.Settings.SampleRate = WSB42X2Module.SampleRate.MsrDivideBy1;
-            wsb42x2Module.PutItemSettings(wsb42x2Settings);
+            var wsb42x6Settings = wsb42x6Module.GetItemSettings<WSB42X6Module.EnabledSettings>();
+            wsb42x6Settings.Settings.SampleRate = WSB42X6Module.SampleRate.MsrDivideBy1;
+            wsb42x6Module.PutItemSettings(wsb42x6Settings);
             break;
     }
 }
@@ -84,88 +86,88 @@ foreach (var item in itemList)
 {
     switch (item)
     {
-        case ICS421Channel ics421Channel:
+        case ICS425Channel ics425Channel:
             // Either set or get the Operation Mode, this will determine which Settings class to use for the Get Endpoint call.
-            var newOperationMode = ICS421Channel.OperationMode.IcpInput;
-            ics421Channel.PutItemOperationMode(newOperationMode);
+            var ics425OperationMode = ICS425Channel.OperationMode.IcpInput;
+            ics425Channel.PutItemOperationMode(ics425OperationMode);
 
-            switch (newOperationMode)
+            switch (ics425OperationMode)
             {
-                case ICS421Channel.OperationMode.Disabled:
+                case ICS425Channel.OperationMode.Disabled:
                     // No settings will be available for disabled channels, hence skip this part.
                     break;
 
-                case ICS421Channel.OperationMode.VoltageInput:
-                    var voltageInputSettings = ics421Channel.GetItemSettings<ICS421Channel.VoltageInputSettings>();
-                    voltageInputSettings.Settings.VoltageRange = ICS421Channel.VoltageRange._1V;
-                    voltageInputSettings.Settings.VoltageInputCoupling = ICS421Channel.VoltageInputCoupling.Dc;
-                    voltageInputSettings.Settings.InputBiasing = ICS421Channel.InputBiasing.Differential;
-                    ics421Channel.PutItemSettings(voltageInputSettings);
+                case ICS425Channel.OperationMode.VoltageInput:
+                    var voltageInputSettings = ics425Channel.GetItemSettings<ICS425Channel.VoltageInputSettings>();
+                    voltageInputSettings.Settings.VoltageRange = ICS425Channel.VoltageRange._1V;
+                    voltageInputSettings.Settings.VoltageInputCoupling = ICS425Channel.VoltageInputCoupling.Dc;
+                    voltageInputSettings.Settings.InputBiasing = ICS425Channel.InputBiasing.Differential;
+                    ics425Channel.PutItemSettings(voltageInputSettings);
                     break;
 
-                case ICS421Channel.OperationMode.IcpInput:
-                    var icpInputSettings = ics421Channel.GetItemSettings<ICS421Channel.IcpInputSettings>();
+                case ICS425Channel.OperationMode.IcpInput:
+                    var icpInputSettings = ics425Channel.GetItemSettings<ICS425Channel.IcpInputSettings>();
 
                     // You can also create new instances of the Settings class should you want to recover settings from a config file.
-                    icpInputSettings.Settings = new ICS421Channel.IcpInputSettings
+                    icpInputSettings.Settings = new ICS425Channel.IcpInputSettings
                     {
-                        VoltageRange = ICS421Channel.VoltageRange._100mV,
-                        IcpInputCoupling = ICS421Channel.IcpInputCoupling.AcWith1HzFilter,
-                        IcpInputCurrentSource = ICS421Channel.IcpInputCurrentSource._4mA,
-                        InputBiasing = ICS421Channel.InputBiasing.SingleEnded,
+                        VoltageRange = ICS425Channel.VoltageRange._100mV,
+                        IcpInputCoupling = ICS425Channel.IcpInputCoupling.AcWith1HzFilter,
+                        IcpInputCurrentSource = ICS425Channel.IcpInputCurrentSource._4mA,
+                        InputBiasing = ICS425Channel.InputBiasing.SingleEnded,
                     };
 
-                    ics421Channel.PutItemSettings(icpInputSettings);
+                    ics425Channel.PutItemSettings(icpInputSettings);
                     break;
             }
             break;
 
-        case WSB42X2Channel wsb42x2Channel:
-            var wsb42x2OperationMode = wsb42x2Channel.GetItemOperationMode();
-            switch (wsb42x2OperationMode)
+        case WSB42X6Channel wsb42x6Channel:
+            var wsb42x6OperationMode = wsb42x6Channel.GetItemOperationMode();
+            switch (wsb42x6OperationMode)
             {
-                case WSB42X2Channel.OperationMode.Disabled:
+                case WSB42X6Channel.OperationMode.Disabled:
                     break;
 
-                case WSB42X2Channel.OperationMode.VoltageInput:
-                    var voltageInputSettings = wsb42x2Channel.GetItemSettings<WSB42X2Channel.VoltageInputSettings>();
-                    voltageInputSettings.Settings.VoltageRange = WSB42X2Channel.VoltageRange._1V;
-                    voltageInputSettings.Settings.VoltageInputCoupling = WSB42X2Channel.VoltageInputCoupling.Dc;
-                    wsb42x2Channel.PutItemSettings(voltageInputSettings);
+                case WSB42X6Channel.OperationMode.VoltageInput:
+                    var voltageInputSettings = wsb42x6Channel.GetItemSettings<WSB42X6Channel.VoltageInputSettings>();
+                    voltageInputSettings.Settings.VoltageRange = WSB42X6Channel.VoltageRange._1V;
+                    voltageInputSettings.Settings.VoltageInputCoupling = WSB42X6Channel.VoltageInputCoupling.Dc;
+                    wsb42x6Channel.PutItemSettings(voltageInputSettings);
                     break;
 
-                case WSB42X2Channel.OperationMode.IcpInput:
-                    var icpInputSettings = wsb42x2Channel.GetItemSettings<WSB42X2Channel.IcpInputSettings>();
-                    icpInputSettings.Settings.VoltageRange = WSB42X2Channel.VoltageRange._1V;
-                    icpInputSettings.Settings.IcpInputCoupling = WSB42X2Channel.IcpInputCoupling.AcWith1HzFilter;
-                    icpInputSettings.Settings.IcpInputCurrentSource = WSB42X2Channel.IcpInputCurrentSource._8mA;
-                    wsb42x2Channel.PutItemSettings(icpInputSettings);
+                case WSB42X6Channel.OperationMode.IcpInput:
+                    var icpInputSettings = wsb42x6Channel.GetItemSettings<WSB42X6Channel.IcpInputSettings>();
+                    icpInputSettings.Settings.VoltageRange = WSB42X6Channel.VoltageRange._1V;
+                    icpInputSettings.Settings.IcpInputCoupling = WSB42X6Channel.IcpInputCoupling.AcWith1HzFilter;
+                    icpInputSettings.Settings.IcpInputCurrentSource = WSB42X6Channel.IcpInputCurrentSource._8mA;
+                    wsb42x6Channel.PutItemSettings(icpInputSettings);
                     break;
 
-                case WSB42X2Channel.OperationMode.WsbInputVoltageExcitation:
-                    var voltageBridgeSettings = wsb42x2Channel.GetItemSettings<WSB42X2Channel.WsbInputVoltageExcitationSettings>();
-                    voltageBridgeSettings.Settings.VoltageRange = WSB42X2Channel.VoltageRange._10mV;
-                    voltageBridgeSettings.Settings.VoltageInputCoupling = WSB42X2Channel.VoltageInputCoupling.Dc;
-                    voltageBridgeSettings.Settings.BridgeMode = WSB42X2Channel.BridgeMode.Full;
+                case WSB42X6Channel.OperationMode.WsbInputVoltageExcitation:
+                    var voltageBridgeSettings = wsb42x6Channel.GetItemSettings<WSB42X6Channel.WsbInputVoltageExcitationSettings>();
+                    voltageBridgeSettings.Settings.VoltageRange = WSB42X6Channel.VoltageRange._10mV;
+                    voltageBridgeSettings.Settings.VoltageInputCoupling = WSB42X6Channel.VoltageInputCoupling.Dc;
+                    voltageBridgeSettings.Settings.BridgeMode = WSB42X6Channel.BridgeMode.Full;
                     voltageBridgeSettings.Settings.ExcitationAmplitude = 5;
-                    voltageBridgeSettings.Settings.ExcitationSensePoint = WSB42X2Channel.ExcitationSensePoint.External;
-                    wsb42x2Channel.PutItemSettings(voltageBridgeSettings);
+                    voltageBridgeSettings.Settings.ExcitationSensePoint = WSB42X6Channel.ExcitationSensePoint.External;
+                    wsb42x6Channel.PutItemSettings(voltageBridgeSettings);
                     break;
 
-                case WSB42X2Channel.OperationMode.WsbInputFourWireCurrentExcitation:
-                    var fourWireCurrentBridgeSettings = wsb42x2Channel.GetItemSettings<WSB42X2Channel.WsbInputFourWireCurrentExcitationSettings>();
-                    fourWireCurrentBridgeSettings.Settings.VoltageRange = WSB42X2Channel.VoltageRange._1V;
-                    fourWireCurrentBridgeSettings.Settings.VoltageInputCoupling = WSB42X2Channel.VoltageInputCoupling.Ac;
-                    fourWireCurrentBridgeSettings.Settings.FourWireCurrentSource = WSB42X2Channel.FourWireCurrentSource._12mA;
-                    wsb42x2Channel.PutItemSettings(fourWireCurrentBridgeSettings);
+                case WSB42X6Channel.OperationMode.WsbInputFourWireCurrentExcitation:
+                    var fourWireCurrentBridgeSettings = wsb42x6Channel.GetItemSettings<WSB42X6Channel.WsbInputFourWireCurrentExcitationSettings>();
+                    fourWireCurrentBridgeSettings.Settings.VoltageRange = WSB42X6Channel.VoltageRange._1V;
+                    fourWireCurrentBridgeSettings.Settings.VoltageInputCoupling = WSB42X6Channel.VoltageInputCoupling.Ac;
+                    fourWireCurrentBridgeSettings.Settings.FourWireCurrentSource = WSB42X6Channel.FourWireCurrentSource._12mA;
+                    wsb42x6Channel.PutItemSettings(fourWireCurrentBridgeSettings);
                     break;
 
-                case WSB42X2Channel.OperationMode.WsbInputTwoWireCurrentExcitation:
-                    var twoWireCurrentBridgeSettings = wsb42x2Channel.GetItemSettings<WSB42X2Channel.WsbInputTwoWireCurrentExcitationSettings>();
-                    twoWireCurrentBridgeSettings.Settings.VoltageRange = WSB42X2Channel.VoltageRange._1V;
-                    twoWireCurrentBridgeSettings.Settings.IcpInputCoupling = WSB42X2Channel.IcpInputCoupling.Ac;
-                    twoWireCurrentBridgeSettings.Settings.TwoWireCurrentSource = WSB42X2Channel.TwoWireCurrentSource._4mA;
-                    wsb42x2Channel.PutItemSettings(twoWireCurrentBridgeSettings);
+                case WSB42X6Channel.OperationMode.WsbInputTwoWireCurrentExcitation:
+                    var twoWireCurrentBridgeSettings = wsb42x6Channel.GetItemSettings<WSB42X6Channel.WsbInputTwoWireCurrentExcitationSettings>();
+                    twoWireCurrentBridgeSettings.Settings.VoltageRange = WSB42X6Channel.VoltageRange._1V;
+                    twoWireCurrentBridgeSettings.Settings.IcpInputCoupling = WSB42X6Channel.IcpInputCoupling.Ac;
+                    twoWireCurrentBridgeSettings.Settings.TwoWireCurrentSource = WSB42X6Channel.TwoWireCurrentSource._4mA;
+                    wsb42x6Channel.PutItemSettings(twoWireCurrentBridgeSettings);
                     break;
             }
             break;

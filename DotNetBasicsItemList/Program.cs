@@ -12,6 +12,7 @@ Console.WriteLine("DotNet Basics - Item List");
 Console.WriteLine("In this example a connection to QServer will be established and the Item List read.");
 Console.WriteLine("The fields of each Item will be discussed and printed to the Console Window.");
 Console.WriteLine("Only standard DotNet classes will be used to accomplish this task.");
+Console.WriteLine("Requirements: DecaQ or MicroQ with at least one Module of any type installed.");
 Console.WriteLine(string.Empty);
 
 // You can either specify the system IP here or in the console when the application runs.
